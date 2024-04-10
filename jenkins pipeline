@@ -1,0 +1,67 @@
+pipeline{
+    agent any
+    tools{
+        nodejs "node16"
+    }
+
+    stages{
+        stage("Clean"){
+            steps{
+                cleanWs()
+            }
+        }
+        stage("CodeCheckOut"){
+            steps{
+              git branch: 'main', url: 'https://github.com/sravanisandhya54/Zomato-Repo.git'
+            }
+        }
+        stage("install dependencies"){
+            steps{
+                sh "npm install"
+            }
+        }
+        stage("OWASP"){
+            steps{
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'Dp-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage("trivy scanner"){
+            steps{
+              sh 'trivy fs . > trivyfs.txt'
+            }
+        }
+        stage("image Build"){
+            steps{
+                sh 'docker build -t myimg10 .'
+            }
+        }
+        stage("img push & tag"){
+            steps{
+                script{
+                    withDockerRegistry(credentialsId: 'Dockerhub') {
+                         sh 'docker tag myimg10 sravaninaidu/dockerimages:ZomatoV10'
+                         sh 'docker push sravaninaidu/dockerimages:ZomatoV10'
+                    }
+                }
+            }
+        }
+        stage("scan image"){
+            steps{
+               sh 'trivy image sravaninaidu/dockerimages:ZomatoV10' 
+            }
+        }
+        stage("container"){
+            steps{
+                sh 'docker run -d --name NodeAppV10 -p 3010:3000 sravaninaidu/dockerimages:ZomatoV10'
+            }
+        }
+        stage("Deploy to StageENV"){
+            steps{
+                 script {
+                    kubernetesDeploy(configs: "deploymentservice.yml", kubeconfigId: "kubernetes")
+                }
+            }
+        }
+    }
+}
