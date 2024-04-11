@@ -53,7 +53,7 @@ pipeline{
         }
         stage("container"){
             steps{
-                sh 'docker run -d --name NodeAppV10 -p 3010:3000 sravaninaidu/dockerimages:ZomatoV10'
+                sh 'docker run -d --name NodeAppV10 -p 3000:3000 sravaninaidu/dockerimages:ZomatoV10'
             }
         }
         stage("Deploy to StageENV"){
